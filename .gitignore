@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# Sensitive Config & Secrets
+data/ai_config.json
+.env
+.env.local
+
+# Build & Deployment
+.vercel/
+
+# Logs & Temporary Media
+*.log
+*.webm
+*.mp3
+*.wav
+/tmp/
+
+# OS Files
+.DS_Store
+Thumbs.db
