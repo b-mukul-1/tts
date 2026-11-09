@@ -772,11 +772,6 @@ class GurgaonRealtyAgent {
     return msg;
   }
 
-    this.transcriptContainer.appendChild(msg);
-    this.transcriptContainer.scrollTop = this.transcriptContainer.scrollHeight;
-    return msg;
-  }
-
   bindEvents() {
     // Hero Call Toggle Button (Primary CTA)
     this.heroCallBtn.addEventListener('click', () => {
