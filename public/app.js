@@ -40,6 +40,39 @@ class GurgaonRealtyAgent {
     // Single-Stream Audio Queue (NO ECHO, NO DOUBLE VOICES)
     this.speechQueue = [];
     this.isProcessingQueue = false;
+    this.isPlayingFiller = false;
+
+    // Greetings Variety (Keeps interactions fresh & human)
+    this.greetings = {
+      raghav: [
+        "नमस्ते सर! राघव बात कर रहा हूँ गुड़गांव प्राइम रियल्टी से। कहिए सर, गोल्फ कोर्स रोड देख रहे हैं या द्वारका एक्सप्रेसवे पे कोई बढ़िया डील चाहिए?",
+        "हाँजी नमस्ते सर! राघव शर्मा बोल रहा हूँ गुड़गांव प्राइम रियल्टी से। बताइए सर, 3BHK या 4BHK में क्या बजट प्लान कर रहे हैं?",
+        "नमस्ते सर! राघव बात कर रहा हूँ। इस हफ्ते द्वारका एक्सप्रेसवे और एसपीआर पे काफी एक्सक्लूसिव इन्वेंट्री आई है — आप पर्सनल यूज़ के लिए देख रहे हैं या इन्वेस्टमेंट?",
+        "हाँजी नमस्ते! राघव बोल रहा हूँ। गुड़गांव के टॉप प्रोजेक्ट्स की फ्रेश इन्वेंट्री और रेट्स के लिए बताइए किस लोकेशन को प्राथमिकता दे रहे हैं?"
+      ],
+      riya: [
+        "हाँजी नमस्ते सर! मैं रिया बोल रही हूँ गुड़गांव प्राइम रियल्टी से। बताइए सर, आज किस सोसाइटी के बारे में जानना चाहते हैं?",
+        "नमस्ते सर! रिया बात कर रही हूँ। आज मैं आपको द्वारका एक्सप्रेसवे और गोल्फ कोर्स रोड की बेस्ट अवेलेबल यूनिट्स और रेट्स बता सकती हूँ — क्या प्रेफर करेंगे?",
+        "हाँजी नमस्ते सर! रिया बोल रही हूँ। हमारे पास इस वीकेंड के लिए कुछ एक्सक्लूसिव सैंपल फ्लैट विज़िट स्लॉट्स हैं — क्या आप कोई प्रोजेक्ट प्लान कर रहे हैं?",
+        "नमस्ते सर! रिया बात कर रही हूँ गुड़गांव प्राइम रियल्टी से। आपका बजट और पसंद की लोकेशन बताइए, मैं बिल्कुल सटीक ऑप्शन्स सजेस्ट करती हूँ!"
+      ]
+    };
+
+    // Conversational Filler Phrases (Eliminates dead silence while AI thinks)
+    this.fillerPhrases = {
+      raghav: [
+        "हाँजी सर, बिल्कुल, एक सेकंड...",
+        "हाँजी, मैं अभी लेटेस्ट इन्वेंट्री चेक करता हूँ...",
+        "बिल्कुल सर, इसका रीसेंट डेटा देखते हैं...",
+        "हाँजी सर, अभी बताता हूँ..."
+      ],
+      riya: [
+        "हाँजी सर, एक सेकंड, मैं देखती हूँ...",
+        "जी सर, बिल्कुल, अभी चेक करती हूँ...",
+        "हाँजी, मैं सोसाइटी की डिटेल्स देख रही हूँ...",
+        "जी सर, बिल्कुल बताती हूँ..."
+      ]
+    };
     
     // Free AI Keys
     this.groqKey = localStorage.getItem('gurgaon_groq_key') || '';
@@ -323,6 +356,24 @@ class GurgaonRealtyAgent {
   }
 
   // START LIVE PHONE CALL
+  getRandomGreeting(persona) {
+    const list = this.greetings[persona] || this.greetings.raghav;
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  playFillerPhrase() {
+    if (!this.isInCall) return;
+    try {
+      const phrases = this.fillerPhrases[this.persona] || this.fillerPhrases.raghav;
+      const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+      const streamUrl = `/api/tts/stream?text=${encodeURIComponent(phrase)}&voice=${encodeURIComponent(this.currentVoice)}&t=${Date.now()}`;
+      
+      this.isPlayingFiller = true;
+      this.audioPlayer.src = streamUrl;
+      this.audioPlayer.play().catch(() => {});
+    } catch (e) {}
+  }
+
   async startCall() {
     this.isInCall = true;
     this.callHeroBar.classList.add('active');
@@ -338,9 +389,8 @@ class GurgaonRealtyAgent {
     const advisorName = this.persona === 'raghav' ? 'Raghav Sharma' : 'Riya';
     this.heroAdvisorName.textContent = `🟢 Connected Live with ${advisorName}`;
     
-    const greeting = this.persona === 'raghav'
-      ? "नमस्ते सर! राघव बात कर रहा हूँ गुड़गांव प्राइम रियल्टी से। कहिए सर, गोल्फ कोर्स रोड देख रहे हैं या द्वारका एक्सप्रेसवे पे कोई अच्छी डील चाहिए?"
-      : "हाँजी नमस्ते सर! मैं रिया बोल रही हूँ गुड़गांव प्राइम रियल्टी से। बताइए सर, आज किस सोसाइटी के बारे में जानना चाहते हैं?";
+    const greeting = this.getRandomGreeting(this.persona);
+    this.addMessage(this.persona, greeting);
 
     // Speak single greeting stream
     this.speakText(greeting, this.currentVoice);
@@ -348,6 +398,7 @@ class GurgaonRealtyAgent {
 
   endCall() {
     this.isInCall = false;
+    this.isPlayingFiller = false;
     this.callHeroBar.classList.remove('active');
     this.heroBtnText.textContent = "📞 START LIVE VOICE CALL (कॉल शुरू करें)";
     this.heroCallBtn.classList.remove('end');
@@ -440,6 +491,7 @@ class GurgaonRealtyAgent {
   }
 
   interrupt() {
+    this.isPlayingFiller = false;
     if (this.audioPlayer) {
       this.audioPlayer.pause();
       this.audioPlayer.currentTime = 0;
@@ -468,6 +520,9 @@ class GurgaonRealtyAgent {
     this.isThinking = true;
     this.updateCallStatus('thinking');
 
+    // Play instant natural filler audio to eliminate silence while LLM processes
+    this.playFillerPhrase();
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -489,7 +544,7 @@ class GurgaonRealtyAgent {
       let sentenceBuffer = '';
       let isFirstChunk = true;
 
-      const assistantMsgElem = this.addMessage('assistant', '...', true);
+      const assistantMsgElem = this.addMessage('assistant', '<div class="thinking-indicator"><span></span><span></span><span></span></div>', true);
       const msgBody = assistantMsgElem.querySelector('.msg-body');
 
       while (true) {
@@ -508,6 +563,7 @@ class GurgaonRealtyAgent {
                 isFirstChunk = false;
                 this.isThinking = false;
                 this.updateCallStatus('speaking');
+                msgBody.innerHTML = '';
               }
 
               assistantFull += data.chunk;
@@ -516,7 +572,7 @@ class GurgaonRealtyAgent {
 
               // Sentence splitting for smooth human streaming speech
               const punctuationMatch = sentenceBuffer.match(/([.,!?।\n]+)/);
-              if (punctuationMatch && sentenceBuffer.length > 25) {
+              if (punctuationMatch && sentenceBuffer.length > 20) {
                 const splitIndex = punctuationMatch.index + punctuationMatch[0].length;
                 const chunkToSpeak = sentenceBuffer.slice(0, splitIndex).trim();
                 sentenceBuffer = sentenceBuffer.slice(splitIndex);
@@ -541,6 +597,7 @@ class GurgaonRealtyAgent {
     } catch (err) {
       console.error('Chat error:', err);
       this.isThinking = false;
+      this.isPlayingFiller = false;
       this.updateCallStatus(this.isInCall ? 'listening' : 'idle');
       this.addMessage('assistant', "सर, फोन लाइन में थोड़ा डिस्टर्बेंस था। एक बार दोबारा बताइए ना प्लीज?");
     }
@@ -557,6 +614,12 @@ class GurgaonRealtyAgent {
   async processSpeechQueue() {
     if (this.isProcessingQueue || this.speechQueue.length === 0) return;
 
+    // Gracefully transition if filler was playing
+    if (this.isPlayingFiller) {
+      this.isPlayingFiller = false;
+      this.audioPlayer.pause();
+    }
+
     this.isProcessingQueue = true;
     this.isSpeaking = true;
     this.updateCallStatus('speaking');
@@ -569,9 +632,10 @@ class GurgaonRealtyAgent {
     try {
       this.audioPlayer.src = streamUrl;
 
-      // Watchdog timer in case audio stream stalls
+      // Watchdog timer accurately tuned for Hindi speech duration (~650ms per word)
       clearTimeout(this.speakingWatchdog);
-      const approxDurationMs = Math.max(2500, textToSpeak.length * 85);
+      const wordCount = textToSpeak.trim().split(/\s+/).length;
+      const approxDurationMs = Math.max(3500, wordCount * 650);
       this.speakingWatchdog = setTimeout(() => {
         if (this.isSpeaking && this.isProcessingQueue) {
           console.log('Audio watchdog advancing queue...');
@@ -585,9 +649,13 @@ class GurgaonRealtyAgent {
             }
           }
         }
-      }, approxDurationMs + 2000);
+      }, approxDurationMs + 2500);
 
       this.audioPlayer.onended = () => {
+        if (this.isPlayingFiller) {
+          this.isPlayingFiller = false;
+          return;
+        }
         clearTimeout(this.speakingWatchdog);
         this.isProcessingQueue = false;
         if (this.speechQueue.length > 0) {
@@ -664,22 +732,20 @@ class GurgaonRealtyAgent {
     const advisorName = persona === 'raghav' ? 'Raghav Sharma' : 'Riya';
     this.heroAdvisorName.textContent = this.isInCall ? `🟢 Connected Live with ${advisorName}` : `Live Voice Call with ${advisorName}`;
 
+    this.currentVoice = persona === 'raghav' ? 'hi-IN-MadhurNeural' : 'hi-IN-SwaraNeural';
+    const greeting = this.getRandomGreeting(persona);
+
     if (persona === 'raghav') {
-      this.currentVoice = 'hi-IN-MadhurNeural';
-      const greeting = "नमस्ते सर! राघव बात कर रहा हूँ गुड़गांव प्राइम रियल्टी से। कहिए सर, गोल्फ कोर्स रोड देख रहे हैं या द्वारका एक्सप्रेसवे पे कोई अच्छी डील चाहिए?";
       this.initialSenderTag.textContent = "RAGHAV SHARMA (Gurgaon Prime Realty)";
-      this.initialMsgBody.textContent = greeting;
-      this.initialReplayBtn.dataset.text = greeting;
-      this.addMessage(persona, greeting);
-      if (this.isInCall) this.speakText(greeting, this.currentVoice);
     } else {
-      this.currentVoice = 'hi-IN-SwaraNeural';
-      const greeting = "हाँजी नमस्ते सर! मैं रिया बोल रही हूँ गुड़गांव प्राइम रियल्टी से। बताइए सर, आज किस सोसाइटी के बारे में जानना चाहते हैं?";
       this.initialSenderTag.textContent = "RIYA (Senior Relationship Manager)";
-      this.initialMsgBody.textContent = greeting;
-      this.initialReplayBtn.dataset.text = greeting;
+    }
+    this.initialMsgBody.textContent = greeting;
+    this.initialReplayBtn.dataset.text = greeting;
+
+    if (this.isInCall) {
       this.addMessage(persona, greeting);
-      if (this.isInCall) this.speakText(greeting, this.currentVoice);
+      this.speakText(greeting, this.currentVoice);
     }
   }
 
@@ -690,14 +756,21 @@ class GurgaonRealtyAgent {
     const senderName = role === 'user' ? 'You' : (this.persona === 'raghav' ? 'RAGHAV SHARMA (Gurgaon Prime Realty)' : 'RIYA (Relationship Manager)');
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    const safeText = (typeof text === 'string') ? text.replace(/"/g, '&quot;') : '';
+
     msg.innerHTML = `
       <div class="msg-header">
         <span class="msg-sender">${senderName}</span>
         <span class="msg-time">${time}</span>
       </div>
       <div class="msg-body">${text}</div>
-      ${role === 'assistant' ? `<button class="replay-btn" data-text="${text}">🔊 Hear Voice</button>` : ''}
+      ${role === 'assistant' ? `<button class="replay-btn" data-text="${safeText}">🔊 Hear Voice</button>` : ''}
     `;
+
+    this.transcriptContainer.appendChild(msg);
+    this.transcriptContainer.scrollTop = this.transcriptContainer.scrollHeight;
+    return msg;
+  }
 
     this.transcriptContainer.appendChild(msg);
     this.transcriptContainer.scrollTop = this.transcriptContainer.scrollHeight;
@@ -764,13 +837,13 @@ class GurgaonRealtyAgent {
     // Direct Speaker Voice Samples (Plays single stream)
     this.testRaghavBtn.addEventListener('click', () => {
       this.selectPersona('raghav');
-      const testText = "नमस्ते सर! राघव बात कर रहा हूँ गुड़गांव प्राइम रियल्टी से। कहिए सर, गोल्फ कोर्स रोड देख रहे हैं या द्वारका एक्सप्रेसवे पे कोई अच्छी डील चाहिए?";
+      const testText = this.getRandomGreeting('raghav');
       this.speakText(testText, 'hi-IN-MadhurNeural');
     });
 
     this.testRiyaBtn.addEventListener('click', () => {
       this.selectPersona('riya');
-      const testText = "हाँजी नमस्ते सर! मैं रिया बोल रही हूँ गुड़गांव प्राइम रियल्टी से। बताइए सर, आज किस सोसाइटी के बारे में जानना चाहते हैं?";
+      const testText = this.getRandomGreeting('riya');
       this.speakText(testText, 'hi-IN-SwaraNeural');
     });
 
@@ -952,13 +1025,20 @@ class GurgaonRealtyAgent {
         this.micStatusBadge.style.color = "#ffb703";
 
         if (!this.audioSilenceTimer) {
-          // 1.0 second of silence detected -> submit speech!
+          // 1.8 seconds of natural conversational silence detected -> finalize speech!
           this.audioSilenceTimer = setTimeout(() => {
-            console.log('VAD: 1.0s silence detected, stopping audio to transcribe...');
+            const speechDuration = Date.now() - this.audioSpeechStartTime;
+            console.log(`VAD: Silence detected after ${speechDuration}ms of speech`);
             this.userIsSpeakingAudio = false;
             this.audioSilenceTimer = null;
+
+            if (speechDuration < 650) {
+              // Too short (noise pop, click, or tap), resume listening
+              console.log('VAD: Speech burst too short, resuming listening...');
+              return;
+            }
             this.stopListening();
-          }, 1000);
+          }, 1800);
         }
       } else {
         this.micStatusBadge.textContent = "🎤 Mic Ready (Speak Now)";
