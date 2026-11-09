@@ -237,10 +237,9 @@ MANDATORY RULES:
   // 1. Try Groq with reliable multi-model fallback list (Fastest free tier)
   if (!streamSuccess && effectiveGroqKey && (provider === 'auto' || provider === 'groq')) {
     const GROQ_MODELS = [
-      'llama-3.1-8b-instant',
-      'llama-3.3-70b-versatile',
-      'llama3-70b-8192',
-      'mixtral-8x7b-32768'
+      'qwen/qwen3.8-27b',
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b'
     ];
 
     for (const modelName of GROQ_MODELS) {
